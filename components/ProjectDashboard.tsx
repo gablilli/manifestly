@@ -208,9 +208,9 @@ function OverviewTab({ project, pwaUrl, save, qrRef, copyUrl, copied, generateMa
                   </div>
                 </Row>
               </div>
-              <ToggleRow label="Offline support" value={project.offline_support} onChange={v => save({ offline_support: v })} Toggle={Toggle}/>
-              <ToggleRow label="Install prompt" value={project.install_prompt} onChange={v => save({ install_prompt: v })} Toggle={Toggle}/>
-              <ToggleRow label="Splash screen" value={project.splash_screen} onChange={v => save({ splash_screen: v })} Toggle={Toggle}/>
+              <ToggleRow label="Offline support" value={project.offline_support} onChange={(v: boolean) => save({ offline_support: v })} Toggle={Toggle}/>
+              <ToggleRow label="Install prompt" value={project.install_prompt} onChange={(v: boolean) => save({ install_prompt: v })} Toggle={Toggle}/>
+              <ToggleRow label="Splash screen" value={project.splash_screen} onChange={(v: boolean) => save({ splash_screen: v })} Toggle={Toggle}/>
             </div>
 
             {/* Phone preview */}
@@ -329,7 +329,7 @@ function OverviewTab({ project, pwaUrl, save, qrRef, copyUrl, copied, generateMa
           <Row label="Site URL">
             <input defaultValue={project.framer_url} onBlur={e => save({ framer_url: e.target.value })} placeholder="https://yoursite.framer.website"/>
           </Row>
-          <ToggleRow label="Auto-deploy" value={project.auto_deploy} onChange={v => save({ auto_deploy: v })} Toggle={Toggle}/>
+          <ToggleRow label="Auto-deploy" value={project.auto_deploy} onChange={(v: boolean) => save({ auto_deploy: v })} Toggle={Toggle}/>
           <Btn full icon={<RefreshCw size={11}/>} style={{ marginTop: '8px' }}>Sync now</Btn>
         </Card>
       </div>
@@ -415,7 +415,7 @@ function SettingsTab({ project, save, deleteProject, Toggle }: any) {
       <Card title="Project settings" icon={<Settings size={13}/>}>
         <Row label="Project name"><input defaultValue={project.name} onBlur={e => save({ name: e.target.value })}/></Row>
         <Row label="Framer URL"><input defaultValue={project.framer_url} onBlur={e => save({ framer_url: e.target.value })}/></Row>
-        <ToggleRow label="Auto-deploy on publish" value={project.auto_deploy} onChange={v => save({ auto_deploy: v })} Toggle={Toggle}/>
+        <ToggleRow label="Auto-deploy on publish" value={project.auto_deploy} onChange={(v: boolean) => save({ auto_deploy: v })} Toggle={Toggle}/>
       </Card>
       <Card title="Danger zone" icon={<Trash2 size={13}/>} danger>
         <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '12px' }}>
