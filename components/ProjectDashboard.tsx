@@ -1,17 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Project } from '@/types'
 import {
   RefreshCw, ExternalLink, Download, Copy, Check,
   Globe, Smartphone, Monitor, Cpu, BarChart2, Lock,
-  Settings, Trash2, ChevronRight, Apple, Zap, Shield
+  Settings, Trash2, ChevronRight, Zap, Shield, Upload, X
 } from 'lucide-react'
+import QRCode from 'qrcode'
 
 interface Props { project: Project }
-
 type Tab = 'overview' | 'analytics' | 'auth' | 'domains' | 'settings'
 
 export default function ProjectDashboard({ project: initialProject }: Props) {
@@ -23,39 +23,21 @@ export default function ProjectDashboard({ project: initialProject }: Props) {
   const [swCode, setSwCode] = useState('')
   const [showManifest, setShowManifest] = useState(false)
   const [showSW, setShowSW] = useState(false)
-  const qrRef = useRef<HTMLCanvasElement>(null)
+  const [qrDataUrl, setQrDataUrl] = useState('')
   const supabase = createClient()
   const router = useRouter()
 
+  // URL is always relative to vercel deployment — no foldaa.com
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : ''
   const pwaUrl = project.custom_domain
     ? `https://${project.custom_domain}`
-    : `https://${project.foldaa_subdomain}.foldaa.com`
+    : `${appOrigin}/p/${project.foldaa_subdomain}`
 
-  useEffect(() => { drawQR() }, [pwaUrl])
-
-  function drawQR() {
-    const canvas = qrRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    const size = 100; const cell = size / 9
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, size, size)
-    const corners = [[0,0],[0,6],[6,0]]
-    corners.forEach(([cr, cc]) => {
-      ctx.fillStyle = '#111'
-      ctx.fillRect(cc*cell, cr*cell, cell*3, cell*3)
-      ctx.fillStyle = '#fff'
-      ctx.fillRect(cc*cell+cell*0.5, cr*cell+cell*0.5, cell*2, cell*2)
-      ctx.fillStyle = '#111'
-      ctx.fillRect(cc*cell+cell, cr*cell+cell, cell, cell)
-    })
-    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
-      const inCorner = (r < 3 && c < 3) || (r < 3 && c > 5) || (r > 5 && c < 3)
-      if (!inCorner && Math.random() > 0.5) {
-        ctx.fillStyle = '#111'
-        ctx.fillRect(c*cell+0.5, r*cell+0.5, cell-1, cell-1)
-      }
-    }
-  }
+  useEffect(() => {
+    QRCode.toDataURL(pwaUrl, { width: 120, margin: 1, color: { dark: '#111111', light: '#ffffff' } })
+      .then(setQrDataUrl)
+      .catch(() => {})
+  }, [pwaUrl])
 
   async function save(updates: Partial<Project>) {
     setSaving(true)
@@ -70,6 +52,7 @@ export default function ProjectDashboard({ project: initialProject }: Props) {
     const json = await res.json()
     setManifestJson(JSON.stringify(json, null, 2))
     setShowManifest(true)
+    setShowSW(false)
   }
 
   async function generateSW() {
@@ -81,6 +64,7 @@ export default function ProjectDashboard({ project: initialProject }: Props) {
     const { sw } = await res.json()
     setSwCode(sw)
     setShowSW(true)
+    setShowManifest(false)
   }
 
   async function copyUrl() {
@@ -98,13 +82,14 @@ export default function ProjectDashboard({ project: initialProject }: Props) {
   const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
     <div onClick={() => onChange(!value)} style={{
       width: '32px', height: '18px', borderRadius: '9px', cursor: 'pointer',
-      background: value ? '#6366f1' : 'var(--bg4)',
+      background: value ? 'var(--accent)' : 'var(--bg4)',
       border: '0.5px solid var(--border2)', position: 'relative', flexShrink: 0,
       transition: 'background 0.2s',
     }}>
       <div style={{
         position: 'absolute', width: '12px', height: '12px', background: '#fff',
-        borderRadius: '50%', top: '2px', left: value ? '16px' : '2px',
+        borderRadius: '50%', top: '2px',
+        left: value ? '16px' : '2px',
         transition: 'left 0.2s',
       }}/>
     </div>
@@ -113,21 +98,19 @@ export default function ProjectDashboard({ project: initialProject }: Props) {
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'overview', label: 'Overview', icon: <Zap size={12}/> },
     { key: 'analytics', label: 'Analytics', icon: <BarChart2 size={12}/> },
-    { key: 'auth', label: 'Auth', icon: <Lock size={12}/> },
+    { key: 'auth', label: 'Access', icon: <Shield size={12}/> },
     { key: 'domains', label: 'Domains', icon: <Globe size={12}/> },
     { key: 'settings', label: 'Settings', icon: <Settings size={12}/> },
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      {/* Topbar */}
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '6px',
         padding: '10px 20px', borderBottom: '0.5px solid var(--border)',
-        background: 'var(--bg2)', flexShrink: 0,
+        background: 'var(--bg)', flexShrink: 0,
       }}>
-        <span style={{ fontSize: '12px', color: 'var(--text3)' }}>~</span>
-        <ChevronRight size={11} color="var(--text3)"/>
         <span style={{ fontSize: '12px', color: 'var(--text2)' }}>{project.name}</span>
         <ChevronRight size={11} color="var(--text3)"/>
         <span style={{ fontSize: '12px', color: 'var(--text)' }}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
@@ -155,19 +138,13 @@ export default function ProjectDashboard({ project: initialProject }: Props) {
           }}>
             <ExternalLink size={12}/> Open live
           </button>
-          <button style={{
-            padding: '5px 12px', borderRadius: '6px', border: 'none',
-            background: '#fff', color: '#000', fontWeight: 500, fontSize: '12px', cursor: 'pointer',
-          }}>
-            Publish
-          </button>
         </div>
       </div>
 
       {/* Content */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {tab === 'overview' && <OverviewTab project={project} pwaUrl={pwaUrl} save={save} qrRef={qrRef} copyUrl={copyUrl} copied={copied} generateManifest={generateManifest} generateSW={generateSW} showManifest={showManifest} setShowManifest={setShowManifest} manifestJson={manifestJson} showSW={showSW} setShowSW={setShowSW} swCode={swCode} Toggle={Toggle}/>}
-        {tab === 'analytics' && <AnalyticsTab project={project}/>}
+        {tab === 'overview' && <OverviewTab project={project} pwaUrl={pwaUrl} save={save} qrDataUrl={qrDataUrl} copyUrl={copyUrl} copied={copied} generateManifest={generateManifest} generateSW={generateSW} showManifest={showManifest} setShowManifest={setShowManifest} manifestJson={manifestJson} showSW={showSW} setShowSW={setShowSW} swCode={swCode} Toggle={Toggle}/>}
+        {tab === 'analytics' && <AnalyticsTab/>}
         {tab === 'auth' && <AuthTab project={project} save={save} Toggle={Toggle}/>}
         {tab === 'domains' && <DomainsTab project={project} pwaUrl={pwaUrl} save={save}/>}
         {tab === 'settings' && <SettingsTab project={project} save={save} deleteProject={deleteProject} Toggle={Toggle}/>}
@@ -176,11 +153,26 @@ export default function ProjectDashboard({ project: initialProject }: Props) {
   )
 }
 
-function OverviewTab({ project, pwaUrl, save, qrRef, copyUrl, copied, generateManifest, generateSW, showManifest, setShowManifest, manifestJson, showSW, setShowSW, swCode, Toggle }: any) {
+function OverviewTab({ project, pwaUrl, save, qrDataUrl, copyUrl, copied, generateManifest, generateSW, showManifest, setShowManifest, manifestJson, showSW, setShowSW, swCode, Toggle }: any) {
+  const [uploading, setUploading] = useState(false)
+  const [iconUrl, setIconUrl] = useState(project.icon_url || '')
+
+  async function handleIconUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const form = new FormData()
+    form.append('file', file)
+    form.append('projectId', project.id)
+    const res = await fetch('/api/upload-icon', { method: 'POST', body: form })
+    const { url } = await res.json()
+    if (url) { setIconUrl(url); save({ icon_url: url }) }
+    setUploading(false)
+  }
+
   return (
     <div style={{ display: 'flex', gap: '20px', padding: '20px' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <h2 style={{ fontSize: '14px', fontWeight: 500 }}>PWA Experience Dashboard</h2>
 
         {/* PWA Settings */}
         <Card title="PWA Settings" icon={<Smartphone size={13}/>}>
@@ -224,15 +216,30 @@ function OverviewTab({ project, pwaUrl, save, qrRef, copyUrl, copied, generateMa
               }}>
                 <div style={{ width: '32px', height: '5px', background: 'var(--border2)', borderRadius: '3px', position: 'absolute', top: '8px' }}/>
                 <div style={{
-                  width: '40px', height: '40px', borderRadius: '10px',
+                  width: '44px', height: '44px', borderRadius: '10px',
                   background: project.theme_color || '#6366f1',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden',
                 }}>
-                  <Zap size={18} color="#fff"/>
+                  {iconUrl
+                    ? <img src={iconUrl} alt="icon" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                    : <Zap size={18} color="#fff"/>
+                  }
                 </div>
                 <div style={{ fontSize: '10px', color: 'var(--text2)', marginTop: '7px' }}>{project.short_name}</div>
               </div>
-              <div style={{ fontSize: '10px', color: 'var(--text3)', textAlign: 'center' }}>{project.foldaa_subdomain}.foldaa.com</div>
+
+              {/* Icon upload */}
+              <label style={{
+                fontSize: '10px', color: 'var(--text2)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '4px',
+                padding: '4px 8px', borderRadius: '5px',
+                border: '0.5px solid var(--border2)',
+              }}>
+                <Upload size={10}/>
+                {uploading ? 'Uploading…' : 'Upload icon'}
+                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleIconUpload} style={{ display: 'none' }}/>
+              </label>
             </div>
           </div>
 
@@ -257,27 +264,31 @@ function OverviewTab({ project, pwaUrl, save, qrRef, copyUrl, copied, generateMa
             background: 'var(--bg3)', borderRadius: '7px', padding: '8px 12px',
           }}>
             <Globe size={13} color="var(--text3)"/>
-            <span style={{ flex: 1, fontSize: '12px', fontFamily: 'var(--font-geist-mono, monospace)' }}>{project.foldaa_subdomain}.foldaa.com</span>
+            <span style={{ flex: 1, fontSize: '12px', fontFamily: 'monospace', wordBreak: 'break-all' }}>{pwaUrl}</span>
             <StatusBadge status={project.status}/>
             <Btn onClick={copyUrl} icon={copied ? <Check size={12}/> : <Copy size={12}/>}>
               {copied ? 'Copied' : 'Copy'}
             </Btn>
             <Btn onClick={() => window.open(pwaUrl, '_blank')} icon={<ExternalLink size={12}/>}>Open</Btn>
           </div>
+          <Row label="Framer site URL">
+            <input defaultValue={project.framer_url} onBlur={e => save({ framer_url: e.target.value })} placeholder="https://yoursite.framer.website"/>
+          </Row>
+          <ToggleRow label="Auto-deploy on Framer publish" value={project.auto_deploy} onChange={(v: boolean) => save({ auto_deploy: v })} Toggle={Toggle}/>
         </Card>
 
         {/* Native platforms */}
         <Card title="Native Platforms" icon={<Monitor size={13}/>} subtitle="Desktop & Mobile">
           {[
-            { icon: <Apple size={15}/>, name: 'macOS Application', desc: 'Build a native installer (DMG)', color: '#1d1d1d', actions: [<Btn key="d" icon={<Download size={11}/>}>Download</Btn>] },
-            { icon: <Apple size={15}/>, name: 'iOS Application', desc: 'Install banner for iPhone & iPad', color: '#0a84ff22', actions: [<Btn key="c">Configure</Btn>] },
-            { icon: <Zap size={15}/>, name: 'Android Application', desc: 'PWA with install prompt', color: '#22c55e22', actions: [<Btn key="c">Configure</Btn>] },
+            { icon: '🍎', name: 'macOS Application', desc: 'Build a native installer (DMG)', actions: [<Btn key="d" icon={<Download size={11}/>}>Download</Btn>] },
+            { icon: '📱', name: 'iOS Application', desc: 'Install banner for iPhone & iPad', actions: [<Btn key="c">Configure</Btn>] },
+            { icon: '🤖', name: 'Android Application', desc: 'PWA with install prompt', actions: [<Btn key="c">Configure</Btn>] },
           ].map((p, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '10px 0', borderBottom: i < 2 ? '0.5px solid var(--border)' : 'none',
             }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', flexShrink: 0 }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
                 {p.icon}
               </div>
               <div style={{ flex: 1 }}>
@@ -291,15 +302,16 @@ function OverviewTab({ project, pwaUrl, save, qrRef, copyUrl, copied, generateMa
       </div>
 
       {/* Right sidebar */}
-      <div style={{ width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ width: '220px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {/* QR */}
         <Card title="Scan to test" icon={<Smartphone size={13}/>}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-            <p style={{ fontSize: '11px', color: 'var(--text2)', textAlign: 'center' }}>View your PWA on your device.</p>
-            <div style={{ background: '#fff', borderRadius: '8px', padding: '8px' }}>
-              <canvas ref={qrRef} width="100" height="100"/>
-            </div>
-            <div style={{ fontSize: '10px', color: 'var(--text3)' }}>{project.foldaa_subdomain}.foldaa.com</div>
+            <p style={{ fontSize: '11px', color: 'var(--text2)', textAlign: 'center' }}>Scan on your device</p>
+            {qrDataUrl
+              ? <img src={qrDataUrl} alt="QR" style={{ width: '120px', height: '120px', borderRadius: '8px' }}/>
+              : <div style={{ width: '120px', height: '120px', background: 'var(--bg3)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: 'var(--text3)' }}>Loading…</div>
+            }
+            <div style={{ fontSize: '10px', color: 'var(--text3)', textAlign: 'center', wordBreak: 'break-all' }}>{pwaUrl}</div>
             <Btn onClick={copyUrl} icon={copied ? <Check size={11}/> : <Copy size={11}/>} full>
               {copied ? 'Copied!' : 'Copy link'}
             </Btn>
@@ -323,21 +335,12 @@ function OverviewTab({ project, pwaUrl, save, qrRef, copyUrl, copied, generateMa
             ))}
           </div>
         </Card>
-
-        {/* Framer */}
-        <Card title="Framer connection" icon={<Zap size={13}/>}>
-          <Row label="Site URL">
-            <input defaultValue={project.framer_url} onBlur={e => save({ framer_url: e.target.value })} placeholder="https://yoursite.framer.website"/>
-          </Row>
-          <ToggleRow label="Auto-deploy" value={project.auto_deploy} onChange={(v: boolean) => save({ auto_deploy: v })} Toggle={Toggle}/>
-          <Btn full icon={<RefreshCw size={11}/>} style={{ marginTop: '8px' }}>Sync now</Btn>
-        </Card>
       </div>
     </div>
   )
 }
 
-function AnalyticsTab({ project }: { project: Project }) {
+function AnalyticsTab() {
   return (
     <div style={{ padding: '20px' }}>
       <h2 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '16px' }}>Analytics</h2>
@@ -352,7 +355,7 @@ function AnalyticsTab({ project }: { project: Project }) {
       </div>
       <div style={{ background: 'var(--bg2)', border: '0.5px solid var(--border)', borderRadius: '10px', padding: '20px', textAlign: 'center', color: 'var(--text3)', fontSize: '12px' }}>
         <BarChart2 size={24} style={{ margin: '0 auto 10px', color: 'var(--text3)' }}/>
-        Analytics will appear here once users start installing and using your PWA.
+        Analytics will appear here once users start installing your PWA.
       </div>
     </div>
   )
@@ -361,7 +364,7 @@ function AnalyticsTab({ project }: { project: Project }) {
 function AuthTab({ project, save, Toggle }: any) {
   return (
     <div style={{ padding: '20px', maxWidth: '500px' }}>
-      <h2 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '16px' }}>Auth settings</h2>
+      <h2 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '16px' }}>Access Control</h2>
       <Card title="Access control" icon={<Shield size={13}/>}>
         <p style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '14px' }}>Control who can access your PWA.</p>
         {[
@@ -369,7 +372,14 @@ function AuthTab({ project, save, Toggle }: any) {
           { field: 'email_whitelist', label: 'Email whitelist', desc: 'Only allow specific email domains' },
           { field: 'login_to_install', label: 'Login to install', desc: 'Users must log in before installing' },
         ].map(({ field, label, desc }) => (
-          <ToggleRow key={field} label={label} desc={desc} value={false} onChange={() => {}} Toggle={Toggle}/>
+          <ToggleRow
+            key={field}
+            label={label}
+            desc={desc}
+            value={!!(project as any)[field]}
+            onChange={(v: boolean) => save({ [field]: v })}
+            Toggle={Toggle}
+          />
         ))}
       </Card>
     </div>
@@ -381,18 +391,26 @@ function DomainsTab({ project, pwaUrl, save }: any) {
   return (
     <div style={{ padding: '20px', maxWidth: '500px' }}>
       <h2 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '16px' }}>Domains</h2>
+      <Card title="Your PWA URL" icon={<Globe size={13}/>}>
+        <div style={{ background: 'var(--bg3)', borderRadius: '7px', padding: '10px 12px', fontSize: '12px', fontFamily: 'monospace', wordBreak: 'break-all', color: 'var(--text2)' }}>
+          {pwaUrl}
+        </div>
+        <p style={{ fontSize: '11px', color: 'var(--text3)' }}>
+          This is your hosted URL. Users can visit it to install your PWA.
+        </p>
+      </Card>
       <Card title="Custom domain" icon={<Globe size={13}/>}>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <input value={domain} onChange={e => setDomain(e.target.value)} placeholder="yourdomain.com"/>
-          <button onClick={() => save({ custom_domain: domain })} style={{
+          <button onClick={() => save({ custom_domain: domain || null })} style={{
             padding: '6px 14px', borderRadius: '6px', border: 'none',
             background: '#fff', color: '#000', fontWeight: 500, fontSize: '12px', cursor: 'pointer', flexShrink: 0,
           }}>Connect</button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg3)', borderRadius: '7px', padding: '8px 12px' }}>
-          <Globe size={13} color="var(--text3)"/>
-          <span style={{ flex: 1, fontSize: '12px', fontFamily: 'monospace' }}>{project.foldaa_subdomain}.foldaa.com</span>
-          <StatusBadge status={project.status}/>
+        <div style={{ background: 'var(--bg3)', borderRadius: '7px', padding: '10px 12px', fontSize: '11px', color: 'var(--text3)' }}>
+          <p style={{ marginBottom: '6px', fontWeight: 500, color: 'var(--text2)' }}>Add these DNS records at your registrar:</p>
+          <p>CNAME <code style={{ background: 'var(--bg4)', padding: '1px 4px', borderRadius: '3px' }}>www</code> → <code style={{ background: 'var(--bg4)', padding: '1px 4px', borderRadius: '3px' }}>cname.vercel-dns.com</code></p>
+          <p style={{ marginTop: '4px' }}>A <code style={{ background: 'var(--bg4)', padding: '1px 4px', borderRadius: '3px' }}>@</code> → <code style={{ background: 'var(--bg4)', padding: '1px 4px', borderRadius: '3px' }}>76.76.21.21</code></p>
         </div>
       </Card>
       <Card title="SSL Certificate" icon={<Shield size={13}/>}>
@@ -434,14 +452,14 @@ function SettingsTab({ project, save, deleteProject, Toggle }: any) {
   )
 }
 
-// --- Shared small components ---
+// --- Shared components ---
 
 function Card({ title, icon, subtitle, danger, children }: any) {
   return (
     <div style={{
       background: 'var(--bg2)',
       border: `0.5px solid ${danger ? 'rgba(239,68,68,0.25)' : 'var(--border)'}`,
-      borderRadius: '10px', padding: '16px', marginBottom: '0',
+      borderRadius: '10px', padding: '16px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 500, color: danger ? 'var(--red)' : 'var(--text2)', marginBottom: '14px' }}>
         {icon} {title}
@@ -522,7 +540,7 @@ function CodeBlock({ title, code, onClose }: { title: string; code: string; onCl
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>×</button>
         </div>
       </div>
-      <pre style={{ padding: '12px', fontSize: '11px', overflow: 'auto', maxHeight: '260px', margin: 0, fontFamily: 'var(--font-geist-mono, monospace)', lineHeight: 1.6 }}>
+      <pre style={{ padding: '12px', fontSize: '11px', overflow: 'auto', maxHeight: '260px', margin: 0, fontFamily: 'monospace', lineHeight: 1.6 }}>
         {code}
       </pre>
     </div>

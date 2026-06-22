@@ -15,6 +15,9 @@ export interface Project {
   splash_screen: boolean
   auto_deploy: boolean
   icon_url: string | null
+  password_protection: boolean
+  email_whitelist: boolean
+  login_to_install: boolean
   status: 'active' | 'inactive' | 'building'
   created_at: string
   updated_at: string
