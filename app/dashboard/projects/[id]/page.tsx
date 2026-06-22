@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { Project } from '@/types'
-import ProjectDashboard from './ProjectDashboard'
+import ProjectDashboard from '@/components/ProjectDashboard'
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
