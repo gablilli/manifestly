@@ -43,7 +43,7 @@ export default async function DashboardPage() {
           { label: 'Total installs', value: '—' },
         ].map(s => (
           <div key={s.label} style={{
-            background: 'var(--bg2)', border: '0.5px solid var(--border)',
+            background: 'var(--bg2)',
             borderRadius: '10px', padding: '14px 16px',
           }}>
             <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '6px' }}>{s.label}</div>
@@ -56,7 +56,7 @@ export default async function DashboardPage() {
       {list.length === 0 ? (
         <div style={{
           textAlign: 'center', padding: '60px 20px',
-          background: 'var(--bg2)', border: '0.5px solid var(--border)',
+          background: 'var(--bg2)',
           borderRadius: '12px', border: '1px dashed var(--border2)',
         }}>
           <Zap size={28} color="var(--text3)" style={{ margin: '0 auto 12px' }}/>
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
           {list.map(p => (
             <Link key={p.id} href={`/dashboard/projects/${p.id}`} style={{ textDecoration: 'none' }}>
               <div style={{
-                background: 'var(--bg2)', border: '0.5px solid var(--border)',
+                background: 'var(--bg2)',
                 borderRadius: '10px', padding: '16px',
                 cursor: 'pointer', transition: 'border-color 0.15s',
               }}
